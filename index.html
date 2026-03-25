@@ -238,122 +238,73 @@
             }
         }
 
-        /*function processData(type, data) {
-            
-            // Para evitar múltiplas leituras do mesmo código no mesmo segundo
-            if (this.isProcessing) return;
-            this.isProcessing = true;
-            setTimeout(() => this.isProcessing = false, 2000);
-    
-            if (type === 'LOGIN') {
-                const parts = data.split(';');
-                if (parts.length >= 2) {
-                    appState.user = { nome: parts[0], id: parts[1] };
-                    localStorage.setItem('atic_user', JSON.stringify(appState.user));
-                    triggerSuccess();
-                    stopScanning();
-                }
-            } else if (type === 'OS') {
-                const regex = /^[A-Z]{3}\d{5}\/\d{4}(#[A-Z])?$/;
-                if (regex.test(data.trim().toUpperCase())) {
-                    appState.os = data.trim().toUpperCase();
-                    triggerSuccess();
-                    stopScanning();
-                }
-            } else if (type === 'AMOSTRA') {
-                // Validar Duplicidade
-                const existe = appState.logs.find(l => l.amostra === data && l.os === appState.os);
-                if (existe) {
-                    alert("Amostra já coletada!");
-                    return;
-                }
-    
-                if (/^\d+$/.test(data)) {
-                    appState.logs.push({
-                        id: Date.now(), // ID único para deleção
-                        os: appState.os,
-                        amostra: data,
-                        usuario: appState.user.nome,
-                        dataHora: new Date().toLocaleString('pt-BR')
-                    });
-                    localStorage.setItem('atic_logs', JSON.stringify(appState.logs));
-                    triggerSuccess();
-                    // Não para o scanner aqui para permitir coletas sequenciais rápidas
-                }
-            }
-            updateUI();
-        }*/
-
         // --- CONFIGURAÇÃO DE VALIDAÇÃO ---
         const TAMANHO_AMOSTRA = 8;
 
-        function processData(type, data) {
-            // Normaliza os dados (remove espaços e garante maiúsculas)
-            const cleanData = data.trim();
+		function processData(type, data) {
+			const cleanData = data.trim();
+		console.log(`Lido (${type}): ${cleanData}`); // Para debug no console do navegador
 
-            if (type === 'LOGIN') {
-                const parts = cleanData.split(';');
-                if (parts.length >= 2) {
-                    appState.user = { nome: parts[0], id: parts[1] };
-                    localStorage.setItem('atic_user', JSON.stringify(appState.user));
-                    triggerSuccess();
-                    stopScanning();
-                } else {
-                    alert("QR Code de Usuário Inválido!");
-                }
-            }
-
-            else if (type === 'OS') {
-                const regex = /^[A-Z]{3}\d{5}\/\d{4}(#[A-Z])?$/;
-                if (regex.test(cleanData.toUpperCase())) {
-                    appState.os = cleanData.toUpperCase();
-                    triggerSuccess();
-                    stopScanning();
-                } else {
-                    alert("Formato de OS inválido! Use o padrão XXXNNNNN/YYYY");
-                }
-            }
-            //heverly
-            else if (type === 'AMOSTRA') {
-                // Validação Estrita de 8 Dígitos Numéricos
-                const isNumeric = /^\d+$/.test(cleanData);
-
-                if (!isNumeric || cleanData.length != TAMANHO_AMOSTRA) {
-                    // Se a leitura for parcial ou errada, avisa o usuário
-                    alert("Erro, por favor refaça a leitura (Código deve ter 8 dígitos)");
-                    return; // Não fecha a câmera aqui para o usuário tentar de novo se preferir, 
-                    // ou ele pode clicar em "Fechar Câmera" manualmente.
-                }
-                /*if (cleanData.length !== 8) {
-                    // Se a leitura for parcial ou errada, avisa o usuário
-                    alert("Erro, por favor refaça a leitura (Código deve ter 8 dígitos)");
-                    return; // Não fecha a câmera aqui para o usuário tentar de novo se preferir, 
-                            // ou ele pode clicar em "Fechar Câmera" manualmente.
-                }*/
-                // Validação de Duplicidade
-                const existe = appState.logs.find(l => l.amostra === cleanData && l.os === appState.os);
-                if (existe) {
-                    alert("Amostra já coletada!");
-                    return;
-                }
-
-                // Registro com Sucesso
-                appState.logs.push({
-                    id: Date.now(),
-                    os: appState.os,
-                    amostra: cleanData,
-                    usuario: appState.user.nome,
-                    dataHora: new Date().toLocaleString('pt-BR')
-                });
-
-                localStorage.setItem('atic_logs', JSON.stringify(appState.logs));
-                triggerSuccess();
-
-                // FECHAMENTO AUTOMÁTICO DA CÂMERA APÓS LEITURA BEM-SUCEDIDA
-                stopScanning();
-            }
-            updateUI();
+				if (type === 'LOGIN') {
+					const parts = cleanData.split(';');
+						if (parts.length >= 2) {
+			// 1. Atualiza o objeto de estado na memória
+            appState.user = { 
+                nome: parts[0], 
+                id: parts[1] 
+            };
+            // 2. Salva no banco local do navegador
+            localStorage.setItem('atic_user', JSON.stringify(appState.user));
+            
+            // 3. Feedback visual e troca de tela
+            triggerSuccess();
+            stopScanning(); // Fecha a câmera
+            updateUI();    // FORÇA O REFRESH DA INTERFACE
+			} else {
+            alert("QR Code de Usuário Inválido!");
+			}
+		} 
+    
+			else if (type === 'OS') {
+				const regex = /^[A-Z]{3}\d{5}\/\d{4}(#[A-Z])?$/;
+					if (regex.test(cleanData.toUpperCase())) {
+            appState.os = cleanData.toUpperCase();
+            triggerSuccess();
+            stopScanning();
+            updateUI(); // FORÇA O REFRESH PARA MOSTRAR BOTÃO DE AMOSTRA
+			} else {
+            alert("Ordem de serviço inválida, tente novamente");
+				}
+		} 
+    
+			else if (type === 'AMOSTRA') {
+        const isNumeric = /^\d+$/.test(cleanData);
+        
+        if (!isNumeric || cleanData.length !== 8) {
+            alert("Erro, por favor refaça a leitura (Código deve ter 8 dígitos)");
+            return; 
         }
+
+        const existe = appState.logs.find(l => l.amostra === cleanData && l.os === appState.os);
+        if (existe) {
+            alert("Amostra já coletada!");
+            return;
+        }
+
+        appState.logs.push({
+            id: Date.now(),
+            os: appState.os,
+            amostra: cleanData,
+            usuario: appState.user.nome,
+            dataHora: new Date().toLocaleString('pt-BR')
+        });
+        
+        localStorage.setItem('atic_logs', JSON.stringify(appState.logs));
+        triggerSuccess();
+        stopScanning(); 
+        updateUI(); // ATUALIZA O GRID E AS MÉTRICAS
+    }
+}
 
 
         function deleteLog(id) {

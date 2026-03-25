@@ -1,355 +1,272 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
-
 <head>
-    <meta charset="UTF-8" />
-    <title>ATIC | OS – Pega Amostra</title>
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://unpkg.com/html5-qrcode"></script>
-    <style>
-        :root {
-            --bg: #f5f7fb;
-            --accent: #4f46e5;
-            --radius-lg: 16px;
-        }
-
-        body {
-            background: radial-gradient(circle at top left, #eef2ff, #f9fafb);
-            min-height: 100vh;
-        }
-
-        .glass-card {
-            background: rgba(255, 255, 255, 0.85);
-            backdrop-filter: blur(18px);
-            border-radius: var(--radius-lg);
-            box-shadow: 0 18px 45px rgba(15, 23, 42, 0.08);
-            border: 1px solid rgba(148, 163, 184, 0.25);
-        }
-
-        .step-active {
-            color: var(--accent);
-            border-bottom: 3px solid var(--accent);
-            font-weight: 700;
-        }
-
-        .btn-primary {
-            background: var(--accent);
-            color: white;
-        }
-
-        .hidden {
-            display: none !important;
-        }
-    </style>
+  <meta charset="UTF-8" />
+  <title>ATIC | Logística de Amostras</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://unpkg.com/html5-qrcode"></script>
+  <script src="https://cdn.sheetjs.com/xlsx-0.19.3/package/dist/xlsx.full.min.js"></script>
+  <style>
+    :root { --accent: #4f46e5; --radius: 16px; }
+    body { background: radial-gradient(circle at top left, #eef2ff, #f9fafb); min-height: 100vh; font-family: sans-serif; }
+    .glass-card { background: rgba(255, 255, 255, 0.8); backdrop-filter: blur(12px); border-radius: var(--radius); border: 1px solid rgba(0,0,0,0.05); box-shadow: 0 10px 30px rgba(0,0,0,0.04); }
+    .step-active { color: var(--accent); border-bottom: 3px solid var(--accent); font-weight: bold; }
+    .hidden { display: none !important; }
+  </style>
 </head>
-
 <body class="p-4">
 
-    <div class="max-w-4xl mx-auto">
-        <header class="flex justify-between items-center mb-6">
-            <div>
-                <h1 class="text-2xl font-black text-slate-900 tracking-tighter">ATIC | LOGÍSTICA</h1>
-                <p class="text-slate-500 text-xs">Sistema de Coleta de Amostras</p>
-            </div>
-            <button id="logoutBtn"
-                class="hidden bg-red-100 text-red-600 px-4 py-2 rounded-xl text-xs font-bold uppercase">Sair</button>
-        </header>
+  <div class="max-w-2xl mx-auto">
+    <header class="flex justify-between items-center mb-6">
+      <h1 class="text-2xl font-black text-slate-800 tracking-tighter">ATIC | <span class="text-indigo-600">OS</span></h1>
+      <button id="logoutBtn" class="hidden bg-white text-red-500 text-[10px] font-bold px-4 py-2 rounded-xl border border-red-100 shadow-sm">SAIR</button>
+    </header>
 
-        <div class="glass-card p-3 mb-6 flex justify-around text-[10px] font-bold uppercase text-slate-400">
-            <span id="step1" class="pb-1">1. Login</span>
-            <span id="step2" class="pb-1">2. OS</span>
-            <span id="step3" class="pb-1">3. Amostras</span>
+    <div class="glass-card p-4 mb-6 flex justify-around text-[10px] uppercase font-bold text-slate-400 tracking-widest">
+        <span id="step1">1. Identificação</span>
+        <span id="step2">2. Ordem Serviço</span>
+        <span id="step3">3. Amostras</span>
+    </div>
+
+    <div id="scanner-container" class="hidden mb-6">
+        <div class="glass-card overflow-hidden border-4 border-indigo-500 shadow-2xl">
+            <div id="reader" class="w-full bg-black"></div>
         </div>
+        <button id="btnStopScan" class="w-full mt-4 bg-slate-900 text-white py-4 rounded-2xl font-bold">FECHAR CÂMERA</button>
+    </div>
 
-        <div id="scanner-container" class="hidden mb-6">
-            <div class="glass-card overflow-hidden border-2 border-indigo-500">
-                <div id="reader" class="w-full bg-black"></div>
-            </div>
-            <button id="btnStopScan" class="w-full mt-3 bg-slate-800 text-white py-3 rounded-xl font-bold">FECHAR
-                CÂMERA</button>
-        </div>
+    <div id="main-panel" class="space-y-4">
+        
+        <section id="section-login" class="hidden">
+            <button onclick="startScanning('LOGIN')" class="w-full py-16 bg-indigo-600 text-white rounded-[2rem] shadow-xl flex flex-col items-center gap-4">
+                <span class="text-4xl">👤</span>
+                <span class="text-xl font-bold uppercase tracking-tight">Identificar Usuário</span>
+            </button>
+        </section>
 
-        <div id="main-panel" class="space-y-4">
-            <section id="section-login" class="hidden">
-                <button onclick="startScanning('LOGIN')"
-                    class="btn-primary w-full py-10 rounded-3xl flex flex-col items-center">
-                    <span class="text-xl font-bold uppercase">Fazer Login</span>
-                    <span class="text-xs opacity-70 mt-1">Ler QR Code de Usuário</span>
-                </button>
-            </section>
-
-            <section id="section-os" class="hidden space-y-4">
-                <div class="glass-card p-4 text-sm font-bold text-slate-700">👤 Usuário: <span id="display-user"></span>
-                </div>
-                <button onclick="startScanning('OS')"
-                    class="btn-primary w-full py-10 rounded-3xl font-bold uppercase">Ler QR Code da OS</button>
-                <div class="flex gap-2">
-                    <input type="text" id="manualOS" placeholder="OS Manual"
-                        class="flex-1 p-3 rounded-xl border outline-none font-bold text-sm">
-                    <button onclick="confirmManualOS()"
-                        class="bg-slate-800 text-white px-4 rounded-xl font-bold text-xs uppercase">Ok</button>
-                </div>
-            </section>
-
-            <section id="section-amostra" class="hidden space-y-4">
-                <div class="flex gap-2">
-                    <div class="glass-card p-3 flex-1 text-xs font-bold">OS: <span id="display-os"
-                            class="text-indigo-600"></span></div>
-                    <button onclick="trocarOS()"
-                        class="bg-white border text-indigo-600 px-3 py-1 rounded-xl text-[10px] font-bold uppercase">Mudar
-                        OS</button>
-                </div>
-                <button onclick="startScanning('AMOSTRA')"
-                    class="btn-primary w-full py-14 rounded-3xl flex flex-col items-center">
-                    <span class="text-2xl font-black italic">COLETAR AMOSTRA</span>
-                    <span class="text-[10px] opacity-80 uppercase mt-1 tracking-widest">Leitura Barcode I25</span>
-                </button>
-            </section>
-        </div>
-
-        <section class="glass-card mt-8 overflow-hidden">
-            <div class="p-3 bg-slate-50 border-b flex justify-between items-center">
-                <h2 class="text-[10px] font-black uppercase text-slate-500">Registros Coletados</h2>
-                <button onclick="exportarDados()"
-                    class="text-[10px] bg-indigo-600 text-white px-3 py-1 rounded font-bold uppercase">Exportar</button>
-            </div>
-            <div class="overflow-x-auto">
-                <table class="w-full text-left text-xs">
-                    <thead>
-                        <tr class="bg-slate-50 text-slate-400 font-bold border-b">
-                            <th class="p-3">Amostra</th>
-                            <th class="p-3">Data/Hora</th>
-                            <th class="p-3">Ação</th>
-                        </tr>
-                    </thead>
-                    <tbody id="logTable" class="divide-y"></tbody>
-                </table>
+        <section id="section-os" class="hidden space-y-4">
+            <div class="glass-card p-4 text-sm text-slate-600">Logado como: <b id="display-user" class="text-slate-900"></b></div>
+            <button onclick="startScanning('OS')" class="w-full py-12 bg-emerald-600 text-white rounded-[2rem] shadow-xl font-bold text-lg uppercase">
+                Ler QR Code da OS
+            </button>
+            <div class="relative py-2"><div class="absolute inset-0 flex items-center"><span class="w-full border-t border-slate-200"></span></div><div class="relative flex justify-center text-[10px] uppercase text-slate-400 font-bold"><span class="bg-[#f9fafb] px-2">Ou digite manualmente</span></div></div>
+            <div class="flex gap-2">
+                <input type="text" id="manualOS" placeholder="SAO00250/2026" class="flex-1 p-4 rounded-2xl border border-slate-200 outline-none font-bold text-slate-700">
+                <button onclick="confirmManualOS()" class="bg-slate-800 text-white px-6 rounded-2xl font-bold uppercase text-xs">OK</button>
             </div>
         </section>
 
-        <div id="splash"
-            class="hidden fixed inset-0 flex items-center justify-center bg-indigo-600/90 backdrop-blur-sm z-50 text-white">
-            <div class="text-center">
-                <div class="text-5xl font-bold mb-2">✓</div>
-                <div class="text-sm font-bold uppercase tracking-widest">Registrado</div>
+        <section id="section-amostra" class="hidden space-y-4">
+            <div class="flex gap-2">
+                <div class="glass-card p-4 flex-1">
+                    <p class="text-[10px] text-slate-400 uppercase font-bold leading-none mb-1">OS Operação</p>
+                    <p id="display-os" class="text-lg font-black text-indigo-600"></p>
+                </div>
+                <button onclick="trocarOS()" class="bg-white border px-4 rounded-2xl text-[10px] font-bold text-slate-500 uppercase">Trocar OS</button>
             </div>
-        </div>
+            <button onclick="startScanning('AMOSTRA')" class="w-full py-20 bg-indigo-600 text-white rounded-[2rem] shadow-xl flex flex-col items-center justify-center gap-4">
+                <div class="bg-white/20 p-4 rounded-full text-white">
+                    <svg class="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg>
+                </div>
+                <span class="text-2xl font-black uppercase italic">Coletar Amostra</span>
+            </button>
+        </section>
     </div>
 
-    <script>
-        let appState = {
-            user: JSON.parse(localStorage.getItem('atic_user')) || null,
-            os: null,
-            logs: JSON.parse(localStorage.getItem('atic_logs')) || []
-        };
+    <section class="mt-10">
+        <div class="flex justify-between items-end mb-4 px-2">
+            <div>
+                <h3 class="text-[10px] font-black text-slate-400 uppercase tracking-widest">Registros</h3>
+                <p class="text-2xl font-black text-slate-800"><span id="metric-total">0</span> <span class="text-sm font-normal text-slate-400">itens</span></p>
+            </div>
+            <button onclick="exportToExcel()" class="bg-white border border-slate-200 text-[10px] font-bold px-4 py-2 rounded-xl shadow-sm uppercase">Exportar Planilha</button>
+        </div>
+        <div class="glass-card overflow-hidden">
+            <table id="main-table" class="w-full text-left text-xs">
+                <thead><tr class="bg-slate-50 text-slate-400 font-bold uppercase border-b border-slate-100"><th class="p-4">Amostra</th><th class="p-4">Data/Hora</th><th class="p-4 text-center">Ação</th></tr></thead>
+                <tbody id="logTable" class="divide-y divide-slate-100"></tbody>
+            </table>
+        </div>
+    </section>
 
-        // Configuração otimizada para Barcode I25 e QR Code
-        const html5QrCode = new Html5Qrcode("reader");
-        const scanConfig = {
-            fps: 20, // Aumentado para resposta mais rápida
-            qrbox: { width: 280, height: 180 }, // Box retangular para facilitar barcode
-            aspectRatio: 1.0,
-            formatsToSupport: [
-                Html5QrcodeSupportedFormats.QR_CODE,
-                Html5QrcodeSupportedFormats.ITF // Foco no Interleaved 2 of 5
-            ]
-        };
+    <div id="splash" class="hidden fixed inset-0 flex items-center justify-center bg-indigo-600/90 backdrop-blur-md z-50 text-white">
+        <div class="text-center"><div class="text-6xl mb-2 font-bold">✓</div><div class="text-sm font-bold uppercase tracking-widest">Processado</div></div>
+    </div>
+  </div>
 
-        function updateUI() {
-            document.getElementById('section-login').classList.add('hidden');
-            document.getElementById('section-os').classList.add('hidden');
-            document.getElementById('section-amostra').classList.add('hidden');
-            document.getElementById('logoutBtn').classList.add('hidden');
-            document.querySelectorAll('[id^="step"]').forEach(s => s.classList.remove('step-active'));
+  <script>
+    // --- ESTADO ---
+    let appState = {
+        user: JSON.parse(localStorage.getItem('atic_user')) || null,
+        os: null,
+        logs: JSON.parse(localStorage.getItem('atic_logs')) || []
+    };
 
-            if (!appState.user) {
-                document.getElementById('section-login').classList.remove('hidden');
-                document.getElementById('step1').classList.add('step-active');
-            } else if (!appState.os) {
-                document.getElementById('section-os').classList.remove('hidden');
-                document.getElementById('logoutBtn').classList.remove('hidden');
-                document.getElementById('display-user').innerText = appState.user.nome;
-                document.getElementById('step2').classList.add('step-active');
-            } else {
-                document.getElementById('section-amostra').classList.remove('hidden');
-                document.getElementById('logoutBtn').classList.remove('hidden');
-                document.getElementById('display-os').innerText = appState.os;
-                document.getElementById('step3').classList.add('step-active');
-            }
-            renderLogs();
-        }
-        /*
-            async function startScanning(type) {
-                document.getElementById('main-panel').classList.add('hidden');
-                document.getElementById('scanner-container').classList.remove('hidden');
-                
-                // Inicia a câmera (pedirá permissão apenas na 1ª vez se o domínio for HTTPS)
-                try {
-                    await html5QrCode.start({ facingMode: "environment" }, scanConfig, (text) => {
-                        processData(type, text);
-                    });
-                } catch (err) {
-                    alert("Câmera já em uso ou permissão negada.");
-                    stopScanning();
-                }
-            }
-        */
-        async function startScanning(type) {
-            // 1. Limpa qualquer tentativa anterior antes de começar
-            if (html5QrCode.getState() !== 1) { // 1 = NOT_STARTED
-                try {
-                    await html5QrCode.stop();
-                } catch (e) {
-                    console.log("Scanner já estava parado");
-                }
-            }
+    const html5QrCode = new Html5Qrcode("reader");
 
-            document.getElementById('main-panel').classList.add('hidden');
-            document.getElementById('scanner-container').classList.remove('hidden');
+    // --- REGRAS DE VALIDAÇÃO ---
+    const REGEX_OS = /^[A-Z]{3}\d{5}\/\d{4}(#[A-Z])?$/;
+    const TAMANHO_AMOSTRA = 8;
 
-            // 2. Pequeno delay para garantir que o DOM renderizou o container 'reader'
-            setTimeout(async () => {
-                try {
-                    await html5QrCode.start(
-                        { facingMode: "environment" },
-                        scanConfig,
-                        (text) => {
-                            // Se for Login ou OS, paramos o scanner após ler. 
-                            // Se for Amostra, mantemos aberto para coletas rápidas.
-                            if (type !== 'AMOSTRA') stopScanning();
-                            processData(type, text);
-                        }
-                    );
-                } catch (err) {
-                    console.error(err);
-                    alert("Erro: Certifique-se de que está usando HTTPS e que deu permissão à câmera nas configurações do navegador.");
-                    stopScanning();
-                }
-            }, 300);
-        }
-
-        function stopScanning() {
-            if (html5QrCode.getState() !== 1) { // 1 = NOT_STARTED
-                html5QrCode.stop().then(() => {
-                    document.getElementById('scanner-container').classList.add('hidden');
-                    document.getElementById('main-panel').classList.remove('hidden');
-                });
-            }
-        }
-
-        // --- CONFIGURAÇÃO DE VALIDAÇÃO ---
-        const TAMANHO_AMOSTRA = 8;
-
-		function processData(type, data) {
-			const cleanData = data.trim();
-		console.log(`Lido (${type}): ${cleanData}`); // Para debug no console do navegador
-
-				if (type === 'LOGIN') {
-					const parts = cleanData.split(';');
-						if (parts.length >= 2) {
-			// 1. Atualiza o objeto de estado na memória
-            appState.user = { 
-                nome: parts[0], 
-                id: parts[1] 
-            };
-            // 2. Salva no banco local do navegador
-            localStorage.setItem('atic_user', JSON.stringify(appState.user));
-            
-            // 3. Feedback visual e troca de tela
-            triggerSuccess();
-            stopScanning(); // Fecha a câmera
-            updateUI();    // FORÇA O REFRESH DA INTERFACE
-			} else {
-            alert("QR Code de Usuário Inválido!");
-			}
-		} 
-    
-			else if (type === 'OS') {
-				const regex = /^[A-Z]{3}\d{5}\/\d{4}(#[A-Z])?$/;
-					if (regex.test(cleanData.toUpperCase())) {
-            appState.os = cleanData.toUpperCase();
-            triggerSuccess();
-            stopScanning();
-            updateUI(); // FORÇA O REFRESH PARA MOSTRAR BOTÃO DE AMOSTRA
-			} else {
-            alert("Ordem de serviço inválida, tente novamente");
-				}
-		} 
-    
-			else if (type === 'AMOSTRA') {
-        const isNumeric = /^\d+$/.test(cleanData);
+    function updateUI() {
+        // Esconder Seções
+        document.getElementById('section-login').classList.add('hidden');
+        document.getElementById('section-os').classList.add('hidden');
+        document.getElementById('section-amostra').classList.add('hidden');
+        document.getElementById('logoutBtn').classList.add('hidden');
         
-        if (!isNumeric || cleanData.length !== 8) {
-            alert("Erro, por favor refaça a leitura (Código deve ter 8 dígitos)");
-            return; 
+        // Reset Stepper
+        document.querySelectorAll('[id^="step"]').forEach(s => s.classList.remove('step-active'));
+
+        if (!appState.user) {
+            document.getElementById('section-login').classList.remove('hidden');
+            document.getElementById('step1').classList.add('step-active');
+        } else if (!appState.os) {
+            document.getElementById('section-os').classList.remove('hidden');
+            document.getElementById('logoutBtn').classList.remove('hidden');
+            document.getElementById('display-user').innerText = appState.user.nome;
+            document.getElementById('step2').classList.add('step-active');
+        } else {
+            document.getElementById('section-amostra').classList.remove('hidden');
+            document.getElementById('logoutBtn').classList.remove('hidden');
+            document.getElementById('display-os').innerText = appState.os;
+            document.getElementById('step3').classList.add('step-active');
         }
 
-        const existe = appState.logs.find(l => l.amostra === cleanData && l.os === appState.os);
-        if (existe) {
-            alert("Amostra já coletada!");
-            return;
-        }
-
-        appState.logs.push({
-            id: Date.now(),
-            os: appState.os,
-            amostra: cleanData,
-            usuario: appState.user.nome,
-            dataHora: new Date().toLocaleString('pt-BR')
-        });
-        
-        localStorage.setItem('atic_logs', JSON.stringify(appState.logs));
-        triggerSuccess();
-        stopScanning(); 
-        updateUI(); // ATUALIZA O GRID E AS MÉTRICAS
+        document.getElementById('metric-total').innerText = appState.logs.length;
+        renderLogs();
     }
-}
 
+    async function startScanning(type) {
+        // Limpar scanner anterior se existir
+        if (html5QrCode.getState() !== 1) await html5QrCode.stop();
 
-        function deleteLog(id) {
-            if (confirm("Deseja excluir esta amostra?")) {
-                appState.logs = appState.logs.filter(l => l.id !== id);
-                localStorage.setItem('atic_logs', JSON.stringify(appState.logs));
-                updateUI();
-            }
+        document.getElementById('main-panel').classList.add('hidden');
+        document.getElementById('scanner-container').classList.remove('hidden');
+        
+        const config = { 
+            fps: 15, 
+            qrbox: { width: 260, height: 180 },
+            formatsToSupport: [ Html5QrcodeSupportedFormats.QR_CODE, Html5QrcodeSupportedFormats.ITF ]
+        };
+
+        html5QrCode.start({ facingMode: "environment" }, config, (text) => {
+            processData(type, text);
+        }).catch(err => {
+            alert("Erro na câmera: " + err);
+            stopScanning();
+        });
+    }
+
+    async function stopScanning() {
+        if (html5QrCode.getState() !== 1) {
+            await html5QrCode.stop();
         }
+        document.getElementById('scanner-container').classList.add('hidden');
+        document.getElementById('main-panel').classList.remove('hidden');
+    }
 
-        function renderLogs() {
-            const container = document.getElementById('logTable');
-            container.innerHTML = appState.logs.slice().reverse().map(l => `
-            <tr class="hover:bg-slate-50 transition">
-                <td class="p-3 font-bold text-indigo-600">${l.amostra}</td>
-                <td class="p-3 text-slate-500">${l.dataHora}</td>
-                <td class="p-3">
-                    <button onclick="deleteLog(${l.id})" class="text-red-500 font-bold">EXCLUIR</button>
+    async function processData(type, data) {
+        const value = data.trim().toUpperCase();
+
+        if (type === 'LOGIN') {
+            const parts = value.split(';');
+            if (parts.length >= 2) {
+                appState.user = { nome: parts[0], id: parts[1] };
+                localStorage.setItem('atic_user', JSON.stringify(appState.user));
+                await finalizeAction();
+            } else alert("QR Code Inválido!");
+        } 
+        
+        else if (type === 'OS') {
+            if (REGEX_OS.test(value)) {
+                appState.os = value;
+                await finalizeAction();
+            } else {
+                alert("Ordem de serviço inválida, tente novamente");
+            }
+        } 
+        
+        else if (type === 'AMOSTRA') {
+            if (!/^\d+$/.test(value) || value.length !== TAMANHO_AMOSTRA) {
+                alert("Erro, por favor refaça a leitura (Obrigatório 8 dígitos)");
+                return;
+            }
+            if (appState.logs.find(l => l.amostra === value && l.os === appState.os)) {
+                alert("Amostra já coletada!");
+                return;
+            }
+            appState.logs.push({
+                id: Date.now(),
+                os: appState.os,
+                amostra: value,
+                usuario: appState.user.nome,
+                dataHora: new Date().toLocaleString('pt-BR')
+            });
+            localStorage.setItem('atic_logs', JSON.stringify(appState.logs));
+            await finalizeAction();
+        }
+    }
+
+    async function finalizeAction() {
+        triggerSplash();
+        await stopScanning();
+        updateUI();
+    }
+
+    function confirmManualOS() {
+        const input = document.getElementById('manualOS').value;
+        processData('OS', input);
+        document.getElementById('manualOS').value = "";
+    }
+
+    function triggerSplash() {
+        const s = document.getElementById('splash');
+        s.classList.remove('hidden');
+        setTimeout(() => s.classList.add('hidden'), 800);
+    }
+
+    function trocarOS() { appState.os = null; updateUI(); }
+
+    function deleteLog(id) {
+        if (confirm("Excluir este registro?")) {
+            appState.logs = appState.logs.filter(l => l.id !== id);
+            localStorage.setItem('atic_logs', JSON.stringify(appState.logs));
+            updateUI();
+        }
+    }
+
+    function renderLogs() {
+        const list = document.getElementById('logTable');
+        list.innerHTML = appState.logs.slice().reverse().map(l => `
+            <tr class="hover:bg-slate-50">
+                <td class="p-4 font-black text-indigo-600">${l.amostra}</td>
+                <td class="p-4 text-slate-500">${l.dataHora}</td>
+                <td class="p-4 text-center">
+                    <button onclick="deleteLog(${l.id})" class="text-red-400 font-bold hover:text-red-600">×</button>
                 </td>
             </tr>
         `).join('');
-        }
+    }
 
-        function triggerSuccess() {
-            const splash = document.getElementById('splash');
-            splash.classList.remove('hidden');
-            setTimeout(() => splash.classList.add('hidden'), 800);
-        }
+    function exportToExcel() {
+        if (appState.logs.length === 0) return alert("Nenhum dado para exportar");
+        const worksheet = XLSX.utils.json_to_sheet(appState.logs);
+        const workbook = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(workbook, worksheet, "Amostras");
+        XLSX.writeFile(workbook, "coleta_amostras.xlsx");
+    }
 
-        function trocarOS() { appState.os = null; updateUI(); }
+    document.getElementById('logoutBtn').addEventListener('click', () => {
+        localStorage.removeItem('atic_user');
+        appState.user = null; appState.os = null; updateUI();
+    });
 
-        function confirmManualOS() {
-            processData('OS', document.getElementById('manualOS').value);
-            document.getElementById('manualOS').value = "";
-        }
+    document.getElementById('btnStopScan').addEventListener('click', stopScanning);
 
-        document.getElementById('logoutBtn').addEventListener('click', () => {
-            localStorage.removeItem('atic_user');
-            appState.user = null; appState.os = null; updateUI();
-        });
-
-        document.getElementById('btnStopScan').addEventListener('click', stopScanning);
-
-        updateUI();
-    </script>
+    // Init
+    updateUI();
+  </script>
 </body>
-
 </html>

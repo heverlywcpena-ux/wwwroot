@@ -84,8 +84,23 @@
         </div>
         <div class="glass-card overflow-hidden">
             <table id="main-table" class="w-full text-left text-xs">
-                <thead><tr class="bg-slate-50 text-slate-400 font-bold uppercase border-b border-slate-100"><th class="p-4">Amostra</th><th class="p-4">Data/Hora</th><th class="p-4 text-center">Ação</th></tr></thead>
-                <tbody id="logTable" class="divide-y divide-slate-100"></tbody>
+                <!--
+				<thead><tr class="bg-slate-50 text-slate-400 font-bold uppercase border-b border-slate-100">
+				<th class="p-4">Amostra</th>
+				<th class="p-4">Data/Hora</th>
+				<th class="p-4 text-center">Ação</th>
+				</tr>
+				</thead>
+				-->
+                <thead>
+					<tr class="bg-slate-50 text-slate-400 font-bold uppercase border-b border-slate-100">
+						<th class="p-4">Dados OS</th>
+						<th class="p-4">Amostra (8 Díg)</th>
+						<th class="p-4">Data/Hora</th>
+						<th class="p-4 text-center">Ação</th>
+					</tr>
+				</thead>
+				<tbody id="logTable" class="divide-y divide-slate-100"></tbody>
             </table>
         </div>
     </section>
@@ -236,7 +251,7 @@
             updateUI();
         }
     }
-
+/*
     function renderLogs() {
         const list = document.getElementById('logTable');
         list.innerHTML = appState.logs.slice().reverse().map(l => `
@@ -267,6 +282,48 @@
 
     // Init
     updateUI();
+*/		// --- RENDERIZAÇÃO DO GRID ATUALIZADA ---
+	function renderLogs() {
+		const list = document.getElementById('logTable');
+		
+		// Atualizando o cabeçalho se necessário (garanta que o HTML tenha <th>OS</th>)
+		// Aqui estou injetando o conteúdo das linhas
+		list.innerHTML = appState.logs.slice().reverse().map(l => `
+			<tr class="hover:bg-slate-50 border-b border-slate-50">
+				<td class="p-4">
+					<p class="text-[10px] text-slate-400 font-bold uppercase leading-none">OS</p>
+					<p class="font-medium text-slate-700">${l.os}</p>
+				</td>
+				<td class="p-4 font-black text-indigo-600 text-base">${l.amostra}</td>
+				<td class="p-4 text-slate-500 text-[10px] leading-tight">${l.dataHora}</td>
+				<td class="p-4 text-center">
+					<button onclick="deleteLog(${l.id})" class="text-red-400 font-bold hover:text-red-600 text-lg">×</button>
+				</td>
+			</tr>
+		`).join('');
+	}
+
+	// --- EXPORTAÇÃO PARA EXCEL ATUALIZADA ---
+	function exportToExcel() {
+		if (appState.logs.length === 0) return alert("Nenhum dado para exportar");
+		
+		// Criando um mapeamento amigável para as colunas do Excel
+		const dadosParaExcel = appState.logs.map(l => ({
+			"Ordem de Serviço": l.os,
+			"Código da Amostra": l.amostra,
+			"Data e Hora": l.dataHora,
+			"Operador": l.usuario
+		}));
+
+		const worksheet = XLSX.utils.json_to_sheet(dadosParaExcel);
+		const workbook = XLSX.utils.book_new();
+		XLSX.utils.book_append_sheet(workbook, worksheet, "Relatório de Amostras");
+		
+		// Gera o nome do arquivo com a data atual
+		const dataArquivo = new Date().toISOString().split('T')[0];
+		XLSX.writeFile(workbook, `coleta_amostras_${dataArquivo}.xlsx`);
+	}  
+  
   </script>
 </body>
 </html>
